@@ -9,7 +9,7 @@ import pygame.event
 import tinytag
 from PyQt5.QtCore import QSize, Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QIcon, QPixmap, QFont
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSlider
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSlider, QFileDialog
 from pygame import mixer
 
 from name_window import NameWindow
@@ -100,6 +100,21 @@ class MyMainWindow(QWidget):
         self.scroll_view = ScrollingFrame([])
         self.vbox.addWidget(self.scroll_view)
 
+        self.hbox_playlist_controls = QHBoxLayout()
+        self.vbox.addLayout(self.hbox_playlist_controls)
+
+        self.btn_add = QPushButton("Add")
+        self.btn_add.clicked.connect(self.add_song)
+        self.hbox_playlist_controls.addWidget(self.btn_add)
+
+        self.btn_del = QPushButton("Delete")
+        self.btn_del.clicked.connect(self.delete_song)
+        self.hbox_playlist_controls.addWidget(self.btn_del)
+
+        self.btn_renew = QPushButton("Пересоздать")
+        self.btn_renew.clicked.connect(self.renew_playlist)
+        self.hbox_playlist_controls.addWidget(self.btn_renew)
+
         keyboard.on_press(lambda q: self.kb_handler(q))
         # keyboard.on_press_key('play/pause media', self.kb_handler)
         # Parameters
@@ -108,6 +123,11 @@ class MyMainWindow(QWidget):
         self.stopped = False
 
         if not os.path.exists('playlist.mplpl'):
+            songs = QFileDialog.getOpenFileNames(
+                self, "Выберите файлы",
+                os.path.expanduser("~") + '/Music',
+                "Music files (*.mp3);;All Files (*)"
+            )[0]
             with open('playlist.mplpl', 'w') as f:
                 f.write(json.dumps({
                     'repeat_mode': 'no',
@@ -115,8 +135,9 @@ class MyMainWindow(QWidget):
                     'sorting_mode': 'A2Z',
                     'current_item': 0,
                     'current_pos': 0,
-                    'songs': [f'C:/Users/dima/Music/Eldoradio/{i}' for i in os.listdir('c:/Users/dima/Music/EldoRadio/')],
+                    'songs': songs,
                 }))
+
         with open('playlist.mplpl') as f:
             data = json.loads(f.read())
             self.repeat_mode = data['repeat_mode']
@@ -127,19 +148,23 @@ class MyMainWindow(QWidget):
             self.songs = []
 
             for i in data['songs']:
-                tag = tinytag.TinyTag.get(i)
-                print(tag.as_dict())
-                song = Song(
-                    tag.title,
-                    i,
-                    tag.artist,
-                    tag.duration
-                )
-                song_item = SongItem(song)
-                song_item.add_click_listener(self.song_clicked)
-                self.songs.append(song_item)
+                try:
+                    tag = tinytag.TinyTag.get(i)
+                except FileNotFoundError:
+                    print('File not found')
+                else:
+                    song = Song(
+                        tag.title,
+                        i,
+                        tag.artist,
+                        tag.duration
+                    )
+                    song_item = SongItem(song)
+                    song_item.add_click_listener(self.song_clicked)
+                    self.songs.append(song_item)
             self.scroll_view.items = self.songs
             self.scroll_view.redraw_items()
+
             self.current = self.songs[self.current_item].song
             self.match_current()
 
@@ -152,6 +177,54 @@ class MyMainWindow(QWidget):
 
         threading.Thread(target=self.song_check).start()
         threading.Thread(target=self.song_check_end).start()
+
+    def add_song(self):
+        dial = QFileDialog.getOpenFileNames(
+            self, "Выберите файлы",
+            os.path.expanduser("~") + '/Music',
+            "Music files (*.mp3);;All Files (*)"
+        )
+
+        for filename in dial[0]:
+            try:
+                tag = tinytag.TinyTag.get(filename)
+            except FileNotFoundError:
+                print('File not found')
+            else:
+                song = Song(
+                    tag.title,
+                    filename,
+                    tag.artist,
+                    tag.duration
+                )
+                song_item = SongItem(song)
+                song_item.add_click_listener(self.song_clicked)
+                self.songs.append(song_item)
+        self.scroll_view.redraw_items()
+        self.save_data()
+
+    def delete_song(self):
+        idx = -1
+        for i in range(len(self.songs)):
+            if self.songs[i].song is self.current:
+                idx = i
+                break
+        self.songs.pop(idx)
+        if idx >= len(self.songs):
+            idx = len(self.songs) - 1
+        self.current = self.songs[idx]
+        self.scroll_view.redraw_items()
+        self.match_current()
+        self.save_data()
+
+    def renew_playlist(self):
+        self.songs.clear()
+
+        self.add_song()
+        self.scroll_view.redraw_items()
+
+        self.match_current()
+        self.save_data()
 
     def get_current_position(self):
         return mixer.music.get_pos() + self.position_moved
@@ -179,18 +252,21 @@ class MyMainWindow(QWidget):
         else:
             pass  # keyboard.play([event])
 
+    def save_data(self):
+        with open('playlist.mplpl', 'w') as f:
+            f.write(json.dumps({
+                'repeat_mode': self.repeat_mode,
+                'play_mode': self.play_mode,
+                'sorting_mode': self.sorting_mode,
+                'current_item': ([i for i in range(len(self.songs)) if self.songs[i].song is self.current] or [0])[0],
+                'current_pos': mixer.music.get_pos(),
+                'songs': [i.song.filename for i in self.songs],
+            }))
+
     def song_check(self):
         while not self.stopped:
             self.update.emit()
-            with open('playlist.mplpl', 'w') as f:
-                f.write(json.dumps({
-                    'repeat_mode': self.repeat_mode,
-                    'play_mode': self.play_mode,
-                    'sorting_mode': self.sorting_mode,
-                    'current_item': [i for i in range(len(self.songs)) if self.songs[i].song is self.current][0],
-                    'current_pos': mixer.music.get_pos(),
-                    'songs': [i.song.filename for i in self.songs],
-                }))
+            self.save_data()
             time.sleep(0.05)
 
     def song_check_end(self):
@@ -309,16 +385,10 @@ class MyMainWindow(QWidget):
                 i.setStyleSheet('')
 
     def closeEvent(self, event):
-        with open('playlist.mplpl', 'w') as f:
-            f.write(json.dumps({
-                'repeat_mode': self.repeat_mode,
-                'play_mode': self.play_mode,
-                'sorting_mode': self.sorting_mode,
-                'current_item': [i for i in range(len(self.songs)) if self.songs[i].song is self.current][0],
-                'current_pos': self.get_current_position(),
-                'songs': [i.song.filename for i in self.songs],
-            }))
+        self.save_data()
         self.stopped = True
+        if self.name_window:
+            self.name_window.close()
         event.accept()
 
     def song_clicked(self, song):
