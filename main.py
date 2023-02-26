@@ -6,6 +6,7 @@ from PyQt5.QtWinExtras import QtWin
 
 from mainWindow import MyMainWindow
 
+
 app = QApplication(sys.argv)
 app.setWindowIcon(QIcon('images/window_icon.png'))
 
@@ -13,6 +14,5 @@ QtWin.setCurrentProcessExplicitAppUserModelID('kgaklgjkasngflkansfldnkasffnl')
 
 w = MyMainWindow()
 w.show()
-
 
 app.exec()

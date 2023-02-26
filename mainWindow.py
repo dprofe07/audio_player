@@ -12,6 +12,7 @@ from PyQt5.QtGui import QIcon, QPixmap, QFont
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSlider
 from pygame import mixer
 
+from name_window import NameWindow
 from scrolling_frame import ScrollingFrame
 from song import Song
 from song_item import SongItem
@@ -26,6 +27,7 @@ class MyMainWindow(QWidget):
     PLAY_MODES = ['play', 'pause']
     update = pyqtSignal()
     song_ended = pyqtSignal()
+    show_name = pyqtSignal()
 
     def __init__(self):
         super().__init__(None)
@@ -35,6 +37,7 @@ class MyMainWindow(QWidget):
 
         self.update.connect(self.update_pos)
         self.song_ended.connect(self.on_song_ended)
+        self.show_name.connect(self.on_show_name)
         self.vbox = QVBoxLayout()
         self.setLayout(self.vbox)
 
@@ -79,6 +82,17 @@ class MyMainWindow(QWidget):
         self.slider_in.valueChanged.connect(self.slider_move)
 
         self.vbox.addWidget(self.slider_in)
+
+        self.hbox_time = QHBoxLayout()
+        self.vbox.addLayout(self.hbox_time)
+
+        self.lblTimeCurr = QLabel("0:00")
+        self.hbox_time.addWidget(self.lblTimeCurr)
+
+        self.hbox_time.addStretch(1)
+
+        self.lblTimeEnd = QLabel("0:00")
+        self.hbox_time.addWidget(self.lblTimeEnd)
 
         self.scroll_view = ScrollingFrame([])
         self.vbox.addWidget(self.scroll_view)
@@ -138,6 +152,10 @@ class MyMainWindow(QWidget):
     def get_current_position(self):
         return mixer.music.get_pos() + self.position_moved
 
+    def on_show_name(self):
+        nw = NameWindow(self.current.formatted_name('::'))
+        nw.show()
+
     def kb_handler(self, event: keyboard.KeyboardEvent):
         if event.name == 'play/pause media' and event.event_type == keyboard.KEY_DOWN:
             self.btn_play_pause_click()
@@ -145,6 +163,8 @@ class MyMainWindow(QWidget):
             self.btn_prev_click()
         elif event.name == 'next track' and event.event_type == keyboard.KEY_DOWN:
             self.btn_next_click()
+        elif event.name == 'stop media' and event.event_type == keyboard.KEY_DOWN:
+            self.show_name.emit()
         else:
             pass  # keyboard.play([event])
 
@@ -181,6 +201,7 @@ class MyMainWindow(QWidget):
 
     def update_pos(self):
         self.slider_out.setValue(self.get_current_position())
+        self.lblTimeCurr.setText(f'{self.get_current_position() // 1000 // 60}:{self.get_current_position() // 1000 % 60}')
 
     def btn_next_click(self):
         idx = -1
@@ -264,6 +285,7 @@ class MyMainWindow(QWidget):
                 self.lblTitle.setText(i.song.name)
                 self.slider_in.setMaximum(round(i.song.duration * 1000))
                 self.slider_out.setMaximum(round(i.song.duration * 1000))
+                self.lblTimeEnd.setText(f'{int(i.song.duration // 60)}:{int(i.song.duration % 60)}')
                 self.slider_in.setMinimum(0)
                 self.slider_out.setMinimum(0)
                 mixer.music.load(i.song.filename)
@@ -271,6 +293,7 @@ class MyMainWindow(QWidget):
                 self.position_moved = 0
                 if self.play_mode == 'pause':
                     mixer.music.pause()
+                self.show_name.emit()
             else:
                 i.setStyleSheet('')
 
