@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout
 
 
 class NameWindow(QWidget):
-    def __init__(self, text):
+    def __init__(self, signal, text):
         super().__init__()
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
@@ -19,8 +19,9 @@ class NameWindow(QWidget):
         self.setFixedWidth(QApplication.desktop().screenGeometry().width())
         self.setFixedHeight(QApplication.desktop().screenGeometry().height() // 10)
 
-
+        self.stopped = False
         self.text = text
+        self.close_signal = signal
 
         Thread(target=self.checker).start()
 
@@ -47,15 +48,24 @@ class NameWindow(QWidget):
     def get_good_font(self, family, start_size):
         f = QFont(family, start_size)
         c = 1
-        while QFontMetrics(f).width(self.text) >= self.width() or self.height() - QFontMetrics(f).height() <= 40:
+        while self.width() - QFontMetrics(f).width(self.text) <= 20 or self.height() - QFontMetrics(f).height() <= 40:
             f = QFont(family, start_size - c)
             c += 1
         return f
 
     def checker(self):
         ts = time.time() + 5
-        while not self.underMouse():
+        while (not self.underMouse()):
+            if self.stopped:
+                return
             if ts < time.time():
                 break
             time.sleep(0.001)
-        self.close()
+        if not self.stopped:
+            self.close()
+
+    def closeEvent(self, evt):
+        self.close_signal.emit()
+        self.stopped = True
+        time.sleep(0.01)
+        evt.accept()

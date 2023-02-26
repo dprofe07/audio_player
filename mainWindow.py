@@ -17,7 +17,7 @@ from scrolling_frame import ScrollingFrame
 from song import Song
 from song_item import SongItem
 
-mixer.init()
+mixer.init(48000)
 pygame.init()
 mixer.music.set_endevent(pygame.USEREVENT + 1)
 
@@ -28,6 +28,7 @@ class MyMainWindow(QWidget):
     update = pyqtSignal()
     song_ended = pyqtSignal()
     show_name = pyqtSignal()
+    name_window_closed = pyqtSignal()
 
     def __init__(self):
         super().__init__(None)
@@ -38,6 +39,8 @@ class MyMainWindow(QWidget):
         self.update.connect(self.update_pos)
         self.song_ended.connect(self.on_song_ended)
         self.show_name.connect(self.on_show_name)
+        self.name_window_closed.connect(self.on_name_window_closed)
+        self.name_window = None
         self.vbox = QVBoxLayout()
         self.setLayout(self.vbox)
 
@@ -125,6 +128,7 @@ class MyMainWindow(QWidget):
 
             for i in data['songs']:
                 tag = tinytag.TinyTag.get(i)
+                print(tag.as_dict())
                 song = Song(
                     tag.title,
                     i,
@@ -153,8 +157,15 @@ class MyMainWindow(QWidget):
         return mixer.music.get_pos() + self.position_moved
 
     def on_show_name(self):
-        nw = NameWindow(self.current.formatted_name('::'))
-        nw.show()
+        if self.name_window is not None:
+            self.name_window.stopped = True
+            self.name_window.close()
+        else:
+            self.name_window = NameWindow(self.name_window_closed, self.current.formatted_name('::'))
+            self.name_window.show()
+
+    def on_name_window_closed(self):
+        self.name_window = None
 
     def kb_handler(self, event: keyboard.KeyboardEvent):
         if event.name == 'play/pause media' and event.event_type == keyboard.KEY_DOWN:
@@ -181,7 +192,6 @@ class MyMainWindow(QWidget):
                     'songs': [i.song.filename for i in self.songs],
                 }))
             time.sleep(0.05)
-
 
     def song_check_end(self):
         while not self.stopped:
@@ -289,6 +299,7 @@ class MyMainWindow(QWidget):
                 self.slider_in.setMinimum(0)
                 self.slider_out.setMinimum(0)
                 mixer.music.load(i.song.filename)
+
                 mixer.music.play()
                 self.position_moved = 0
                 if self.play_mode == 'pause':
