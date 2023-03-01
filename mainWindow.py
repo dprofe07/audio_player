@@ -380,6 +380,9 @@ class MyMainWindow(QWidget):
                 self.position_moved = 0
                 if self.play_mode == 'pause':
                     mixer.music.pause()
+                if self.name_window is not None:
+                    self.name_window.close()
+                    self.name_window = None
                 self.show_name.emit()
             else:
                 i.setStyleSheet('')

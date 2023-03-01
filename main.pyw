@@ -1,5 +1,6 @@
 import sys
 
+import pygame
 from PyQt5.Qt import QApplication
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWinExtras import QtWin
@@ -16,3 +17,5 @@ w = MyMainWindow()
 w.show()
 
 app.exec()
+
+pygame.quit()
