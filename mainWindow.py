@@ -272,7 +272,8 @@ class MyMainWindow(QWidget):
     def song_check_end(self):
         while not self.stopped:
             for _ in pygame.event.get():
-                self.song_ended.emit()
+                if _.type == mixer.music.get_endevent():
+                    self.song_ended.emit()
             time.sleep(0.05)
 
     def on_song_ended(self):
