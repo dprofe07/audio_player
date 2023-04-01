@@ -1,13 +1,13 @@
+import json
 import os.path
 import random
 import threading
 import time
-import json
 
 import keyboard
 import pygame.event
 import tinytag
-from PyQt5.QtCore import QSize, Qt, pyqtSignal, QObject
+from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QIcon, QPixmap, QFont
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSlider, QFileDialog
 from pygame import mixer
@@ -234,7 +234,10 @@ class MyMainWindow(QWidget):
             self.name_window.stopped = True
             self.name_window.close()
         else:
-            self.name_window = NameWindow(self.name_window_closed, self.current.formatted_name('::'))
+            self.name_window = NameWindow(
+                self.name_window_closed, self.current.formatted_name('::'),
+                lambda: self.get_current_position() / 1000, lambda: self.current.duration
+            )
             self.name_window.show()
 
     def on_name_window_closed(self):

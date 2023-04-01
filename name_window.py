@@ -1,24 +1,28 @@
 import time
 from threading import Thread
 
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, pyqtSignal
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QPen, QFontMetrics, QFont
 from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout
 
 
 class NameWindow(QWidget):
-    def __init__(self, signal, text):
+    redraw_signal = pyqtSignal()
+    def __init__(self, signal, text, get_time_function, get_length_function):
         super().__init__()
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         #self.setWindowOpacity(0.2)
+        self.redraw_signal.connect(self.repaint)
 
         self.move(0, 0)
         self.setFixedWidth(QApplication.desktop().screenGeometry().width())
         self.setFixedHeight(QApplication.desktop().screenGeometry().height() // 10)
 
+        self.get_length_function = get_length_function
+        self.get_time_function = get_time_function
         self.stopped = False
         self.text = text
         self.close_signal = signal
@@ -45,6 +49,15 @@ class NameWindow(QWidget):
         p.setFont(font)
         p.drawText((self.width() - fm.width(self.text)) // 2, (self.height() - fm.height()) // 2, fm.width(self.text), fm.height(), 0, self.text)
 
+        p.setOpacity(0.5)
+        p.setBrush(QBrush(Qt.green))
+        p.drawRect(
+            0,
+            int(self.height() * 0.9),
+            int(self.width() * self.get_time_function() / self.get_length_function()),
+            int(self.height() * 0.1)
+        )
+
     def get_good_font(self, family, start_size):
         f = QFont(family, start_size)
         c = 1
@@ -61,6 +74,9 @@ class NameWindow(QWidget):
             if ts < time.time():
                 break
             time.sleep(0.001)
+
+            self.redraw_signal.emit()
+
         if not self.stopped:
             self.close()
 
