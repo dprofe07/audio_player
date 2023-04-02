@@ -8,7 +8,19 @@ from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout
 
 class NameWindow(QWidget):
     redraw_signal = pyqtSignal()
-    def __init__(self, signal, text, get_time_function, get_length_function):
+    def __init__(self, signal, song, song_list, get_time_function, get_length_function):
+        self.current_text = song.formatted_name('::')
+        for i in range(len(song_list)):
+            if song_list[i].song is song:
+                if i == 0:
+                    self.prev_text = 'R: ' + song_list[-1].song.formatted_name('::')
+                else:
+                    self.prev_text = song_list[i - 1].song.formatted_name('::')
+
+                if i == len(song_list) - 1:
+                    self.next_text = 'R: ' + song_list[0].song.formatted_name('::')
+                else:
+                    self.next_text = song_list[i + 1].song.formatted_name('::')
         super().__init__()
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -19,12 +31,14 @@ class NameWindow(QWidget):
 
         self.move(0, 0)
         self.setFixedWidth(QApplication.desktop().screenGeometry().width())
-        self.setFixedHeight(QApplication.desktop().screenGeometry().height() // 10)
+        self.setFixedHeight(QApplication.desktop().screenGeometry().height() // 6)
 
+
+        self.font_current = self.get_good_font('Arial', self.current_text, 72)
+        self.font_prev_next = self.get_good_font('Arial', max(self.next_text, self.prev_text, key=len), 20)
         self.get_length_function = get_length_function
         self.get_time_function = get_time_function
         self.stopped = False
-        self.text = text
         self.close_signal = signal
 
         Thread(target=self.checker).start()
@@ -43,11 +57,32 @@ class NameWindow(QWidget):
         p.setPen(Qt.white)
         p.setOpacity(1)
 
-        font = self.get_good_font('Arial', 72)
-        fm = QFontMetrics(font)
+        fm_current = QFontMetrics(self.font_current)
 
-        p.setFont(font)
-        p.drawText((self.width() - fm.width(self.text)) // 2, (self.height() - fm.height()) // 2, fm.width(self.text), fm.height(), 0, self.text)
+        fm_prev_next = QFontMetrics(self.font_prev_next)
+
+        p.setFont(self.font_current)
+        p.drawText(
+            (self.width() - fm_current.width(self.current_text)) // 2, (self.height() - fm_current.height()) // 2, fm_current.width(self.current_text),
+            fm_current.height(),
+            0,
+            self.current_text
+        )
+
+        p.setFont(self.font_prev_next)
+        p.drawText(
+            (self.width() - fm_prev_next.width(self.prev_text)) // 2, fm_prev_next.height() // 2,
+            fm_prev_next.width(self.prev_text), fm_prev_next.height(),
+            0,
+            self.prev_text
+        )
+
+        p.drawText(
+            (self.width() - fm_prev_next.width(self.next_text)) // 2, (self.height() - fm_prev_next.height()),
+            fm_prev_next.width(self.next_text), fm_prev_next.height(),
+            0,
+            self.next_text
+        )
 
         p.setOpacity(0.5)
         p.setBrush(QBrush(Qt.green))
@@ -58,10 +93,10 @@ class NameWindow(QWidget):
             int(self.height() * 0.1)
         )
 
-    def get_good_font(self, family, start_size):
+    def get_good_font(self, family, text, start_size):
         f = QFont(family, start_size)
         c = 1
-        while self.width() - QFontMetrics(f).width(self.text) <= 20 or self.height() - QFontMetrics(f).height() <= 40:
+        while self.width() - QFontMetrics(f).width(text) <= 20 or self.height() / 3 * 2 - QFontMetrics(f).height() <= 40:
             f = QFont(family, start_size - c)
             c += 1
         return f
@@ -73,7 +108,7 @@ class NameWindow(QWidget):
                 return
             if ts < time.time():
                 break
-            time.sleep(0.001)
+            time.sleep(0.01)
 
             self.redraw_signal.emit()
 

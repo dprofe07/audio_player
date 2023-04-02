@@ -44,11 +44,11 @@ class MyMainWindow(QWidget):
         self.vbox = QVBoxLayout()
         self.setLayout(self.vbox)
 
-        self.lblTitle = QLabel('Make My Day')
+        self.lblTitle = QLabel('Title')
         self.lblTitle.setFont(QFont('Arial', 25, 2))
         self.vbox.addWidget(self.lblTitle)
 
-        self.lblSinger = QLabel('Ace of Base')
+        self.lblSinger = QLabel('Singer')
         self.lblSinger.setFont(QFont('Arial', 15, 2))
         self.vbox.addWidget(self.lblSinger)
 
@@ -115,7 +115,8 @@ class MyMainWindow(QWidget):
         self.btn_renew.clicked.connect(self.renew_playlist)
         self.hbox_playlist_controls.addWidget(self.btn_renew)
 
-        keyboard.on_press(lambda q: self.kb_handler(q))
+        keyboard.hook(lambda q: self.kb_handler(q), True)
+        #keyboard.on_release(lambda q: [print(q), self.kb_handler(q)])
         # keyboard.on_press_key('play/pause media', self.kb_handler)
         # Parameters
 
@@ -235,7 +236,8 @@ class MyMainWindow(QWidget):
             self.name_window.close()
         else:
             self.name_window = NameWindow(
-                self.name_window_closed, self.current.formatted_name('::'),
+                self.name_window_closed, self.current, # self.current.formatted_name('::'),
+                self.songs,
                 lambda: self.get_current_position() / 1000, lambda: self.current.duration
             )
             self.name_window.show()
@@ -247,13 +249,23 @@ class MyMainWindow(QWidget):
         if event.name == 'play/pause media' and event.event_type == keyboard.KEY_DOWN:
             self.btn_play_pause_click()
         elif event.name == 'previous track' and event.event_type == keyboard.KEY_DOWN:
-            self.btn_prev_click()
+            if keyboard.is_pressed('shift'):
+                self.position_moved -= 5000
+                mixer.music.set_pos(self.get_current_position() // 1000)
+            else:
+                self.btn_prev_click()
         elif event.name == 'next track' and event.event_type == keyboard.KEY_DOWN:
-            self.btn_next_click()
+            if keyboard.is_pressed('shift'):
+                self.position_moved += 5000
+                mixer.music.set_pos(self.get_current_position() // 1000)
+            else:
+                self.btn_next_click()
         elif event.name == 'stop media' and event.event_type == keyboard.KEY_DOWN:
             self.show_name.emit()
         else:
-            pass  # keyboard.play([event])
+            keyboard.unhook_all()
+            keyboard.play([event])
+            keyboard.hook(lambda e: self.kb_handler(e), True)
 
     def save_data(self):
         with open('playlist.mplpl', 'w') as f:
