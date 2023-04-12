@@ -1,3 +1,4 @@
+import functools
 import json
 import os.path
 import random
@@ -20,6 +21,16 @@ from song_item import SongItem
 mixer.init(48000)
 pygame.init()
 mixer.music.set_endevent(pygame.USEREVENT + 1)
+
+
+def no_error(fn):
+    @functools.wraps(fn)
+    def wrapper(*a, **kw):
+        try:
+            return fn(*a, **kw)
+        except Exception as e:
+            print(f'NE: {e.__class__.__name__}: {e.args}')
+    return wrapper
 
 
 class MyMainWindow(QWidget):
@@ -115,7 +126,7 @@ class MyMainWindow(QWidget):
         self.btn_renew.clicked.connect(self.renew_playlist)
         self.hbox_playlist_controls.addWidget(self.btn_renew)
 
-        keyboard.hook(lambda q: self.kb_handler(q), True)
+        keyboard.hook(lambda q: self.kb_handler(q))
         #keyboard.on_release(lambda q: [print(q), self.kb_handler(q)])
         # keyboard.on_press_key('play/pause media', self.kb_handler)
         # Parameters
@@ -233,7 +244,8 @@ class MyMainWindow(QWidget):
     def on_show_name(self):
         if self.name_window is not None:
             self.name_window.stopped = True
-            self.name_window.close()
+            if self.name_window.isVisible():
+                self.name_window.close()
         else:
             self.name_window = NameWindow(
                 self.name_window_closed, self.current, # self.current.formatted_name('::'),
@@ -263,9 +275,10 @@ class MyMainWindow(QWidget):
         elif event.name == 'stop media' and event.event_type == keyboard.KEY_DOWN:
             self.show_name.emit()
         else:
-            keyboard.unhook_all()
-            keyboard.play([event])
-            keyboard.hook(lambda e: self.kb_handler(e), True)
+            # keyboard.unhook_all()
+            # keyboard.play([event])
+            # keyboard.hook(lambda e: self.kb_handler(e))
+            pass
 
     def save_data(self):
         with open('playlist.mplpl', 'w') as f:
@@ -294,10 +307,8 @@ class MyMainWindow(QWidget):
     def on_song_ended(self):
         for i in self.songs:
             if i.song is self.current:
-                if self.repeat_mode == 'no':
-                    self.btn_next_click()
-                else:
-                    self.btn_next_click()
+                self.btn_next_click()
+                if self.repeat_mode == 'one':
                     self.btn_prev_click()
                 break
 
@@ -305,6 +316,7 @@ class MyMainWindow(QWidget):
         self.slider_out.setValue(self.get_current_position())
         self.lblTimeCurr.setText(f'{self.get_current_position() // 1000 // 60}:{self.get_current_position() // 1000 % 60}')
 
+    @no_error
     def btn_next_click(self):
         idx = -1
 
@@ -319,7 +331,9 @@ class MyMainWindow(QWidget):
             next_ -= len(self.songs)
         self.current = self.songs[next_].song
         self.match_current()
+        self.save_data()
 
+    @no_error
     def btn_prev_click(self):
         idx = -1
         for i in range(len(self.songs)):
@@ -332,6 +346,7 @@ class MyMainWindow(QWidget):
             next_ += len(self.songs)
         self.current = self.songs[next_].song
         self.match_current()
+        self.save_data()
 
     def btn_repeater_click(self):
         if self.repeat_mode == 'no':
@@ -352,6 +367,7 @@ class MyMainWindow(QWidget):
             mixer.music.unpause()
 
         self.btn_play_pause.setIcon(QIcon(QPixmap(f'images/{"play" if self.play_mode == "pause" else "pause"}.png')))
+        self.save_data()
 
     def btn_sorting_click(self):
         if self.sorting_mode == 'A2Z':
@@ -364,6 +380,7 @@ class MyMainWindow(QWidget):
         self.apply_sort()
 
         self.btn_sorting.setIcon(QIcon(QPixmap(f'images/sorting_{self.sorting_mode}.png')))
+        self.save_data()
 
     def apply_sort(self):
         if self.sorting_mode == 'shuffle':
@@ -379,6 +396,7 @@ class MyMainWindow(QWidget):
             self.scroll_view.items = self.songs
             self.scroll_view.redraw_items()
 
+    @no_error
     def match_current(self):
         for i in self.songs:
             if i.song is self.current:
@@ -390,22 +408,29 @@ class MyMainWindow(QWidget):
                 self.lblTimeEnd.setText(f'{int(i.song.duration // 60)}:{int(i.song.duration % 60)}')
                 self.slider_in.setMinimum(0)
                 self.slider_out.setMinimum(0)
+
                 mixer.music.load(i.song.filename)
 
                 mixer.music.play()
                 self.position_moved = 0
                 if self.play_mode == 'pause':
                     mixer.music.pause()
+
                 if self.name_window is not None:
-                    self.name_window.close()
+                    if self.name_window.isVisible():
+                        try:
+                            self.name_window.close()
+                        except Exception as e:
+                            print(e)
                     self.name_window = None
                 self.show_name.emit()
             else:
                 i.setStyleSheet('')
 
     def closeEvent(self, event):
-        self.save_data()
         self.stopped = True
+        time.sleep(0.1)
+        self.save_data()
         if self.name_window:
             self.name_window.close()
         event.accept()

@@ -8,7 +8,9 @@ from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout
 
 class NameWindow(QWidget):
     redraw_signal = pyqtSignal()
+
     def __init__(self, signal, song, song_list, get_time_function, get_length_function):
+        super().__init__()
         self.current_text = song.formatted_name('::')
         for i in range(len(song_list)):
             if song_list[i].song is song:
@@ -21,7 +23,6 @@ class NameWindow(QWidget):
                     self.next_text = 'R: ' + song_list[0].song.formatted_name('::')
                 else:
                     self.next_text = song_list[i + 1].song.formatted_name('::')
-        super().__init__()
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -102,8 +103,9 @@ class NameWindow(QWidget):
         return f
 
     def checker(self):
+        time.sleep(0.1)
         ts = time.time() + 5
-        while (not self.underMouse()):
+        while not self.underMouse():
             if self.stopped:
                 return
             if ts < time.time():
@@ -112,11 +114,14 @@ class NameWindow(QWidget):
 
             self.redraw_signal.emit()
 
-        if not self.stopped:
+        print('A')
+        if not self.stopped and self.isVisible():
+            print('B')
             self.close()
+            print('C')
 
     def closeEvent(self, evt):
-        self.close_signal.emit()
         self.stopped = True
+        self.close_signal.emit()
         time.sleep(0.01)
         evt.accept()
