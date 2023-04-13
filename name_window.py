@@ -9,31 +9,28 @@ from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout
 class NameWindow(QWidget):
     redraw_signal = pyqtSignal()
 
-    def __init__(self, signal, song, song_list, get_time_function, get_length_function):
+    def __init__(self, signal, song_idx, song_list, get_time_function, get_length_function):
         super().__init__()
-        self.current_text = song.formatted_name('::')
-        for i in range(len(song_list)):
-            if song_list[i].song is song:
-                if i == 0:
-                    self.prev_text = 'R: ' + song_list[-1].song.formatted_name('::')
-                else:
-                    self.prev_text = song_list[i - 1].song.formatted_name('::')
+        self.current_text = song_list[song_idx].song.formatted_name('::')
+        if song_idx == 0:
+            self.prev_text = '↻: ' + song_list[-1].song.formatted_name('::')
+        else:
+            self.prev_text = song_list[song_idx - 1].song.formatted_name('::')
 
-                if i == len(song_list) - 1:
-                    self.next_text = 'R: ' + song_list[0].song.formatted_name('::')
-                else:
-                    self.next_text = song_list[i + 1].song.formatted_name('::')
+        if song_idx == len(song_list) - 1:
+            self.next_text = '↻: ' + song_list[0].song.formatted_name('::')
+        else:
+            self.next_text = song_list[song_idx + 1].song.formatted_name('::')
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_NoSystemBackground, True)
-        #self.setWindowOpacity(0.2)
+
         self.redraw_signal.connect(self.repaint)
 
         self.move(0, 0)
         self.setFixedWidth(QApplication.desktop().screenGeometry().width())
         self.setFixedHeight(QApplication.desktop().screenGeometry().height() // 6)
-
 
         self.font_current = self.get_good_font('Arial', self.current_text, 72)
         self.font_prev_next = self.get_good_font('Arial', max(self.next_text, self.prev_text, key=len), 20)
@@ -105,20 +102,15 @@ class NameWindow(QWidget):
     def checker(self):
         time.sleep(0.1)
         ts = time.time() + 5
-        while not self.underMouse():
-            if self.stopped:
-                return
+        while not self.underMouse() and not self.stopped:
             if ts < time.time():
                 break
-            time.sleep(0.01)
+            time.sleep(0.1)
 
             self.redraw_signal.emit()
 
-        print('A')
         if not self.stopped and self.isVisible():
-            print('B')
             self.close()
-            print('C')
 
     def closeEvent(self, evt):
         self.stopped = True

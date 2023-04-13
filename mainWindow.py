@@ -69,19 +69,19 @@ class MyMainWindow(QWidget):
         # Controls:
 
         self.btn_repeater = QPushButton(QIcon('images/repeat_no.png'), '')
-        self.btn_repeater.clicked.connect(self.btn_repeater_click)
+        self.btn_repeater.clicked.connect(lambda e: self.btn_repeater_click())
 
         self.btn_prev = QPushButton(QIcon('images/previous.png'), '')
-        self.btn_prev.clicked.connect(self.btn_prev_click)
+        self.btn_prev.clicked.connect(lambda e: self.btn_prev_click())
 
         self.btn_play_pause = QPushButton(QIcon('images/play.png'), '')
-        self.btn_play_pause.clicked.connect(self.btn_play_pause_click)
+        self.btn_play_pause.clicked.connect(lambda e: self.btn_play_pause_click())
 
         self.btn_next = QPushButton(QIcon('images/next.png'), '')
-        self.btn_next.clicked.connect(self.btn_next_click)
+        self.btn_next.clicked.connect(lambda e: self.btn_next_click())
 
         self.btn_sorting = QPushButton(QIcon('images/sorting_A2Z.png'), '')
-        self.btn_sorting.clicked.connect(self.btn_sorting_click)
+        self.btn_sorting.clicked.connect(lambda e: self.btn_sorting_click())
 
         for i in [self.btn_repeater, self.btn_prev, self.btn_play_pause, self.btn_next, self.btn_sorting]:
             self.hboxControls.addWidget(i)
@@ -115,15 +115,15 @@ class MyMainWindow(QWidget):
         self.vbox.addLayout(self.hbox_playlist_controls)
 
         self.btn_add = QPushButton("Add")
-        self.btn_add.clicked.connect(self.add_song)
+        self.btn_add.clicked.connect(lambda e: self.add_song())
         self.hbox_playlist_controls.addWidget(self.btn_add)
 
         self.btn_del = QPushButton("Delete")
-        self.btn_del.clicked.connect(self.delete_song)
+        self.btn_del.clicked.connect(lambda e: self.delete_song())
         self.hbox_playlist_controls.addWidget(self.btn_del)
 
         self.btn_renew = QPushButton("Пересоздать")
-        self.btn_renew.clicked.connect(self.renew_playlist)
+        self.btn_renew.clicked.connect(lambda e: self.renew_playlist())
         self.hbox_playlist_controls.addWidget(self.btn_renew)
 
         keyboard.hook(lambda q: self.kb_handler(q))
@@ -177,7 +177,7 @@ class MyMainWindow(QWidget):
             self.scroll_view.items = self.songs
             self.scroll_view.redraw_items()
 
-            self.current = self.songs[self.current_item].song
+            self.current_idx = self.current_item
             self.match_current()
 
             self.position_moved = data['current_pos']
@@ -216,15 +216,9 @@ class MyMainWindow(QWidget):
         self.save_data()
 
     def delete_song(self):
-        idx = -1
-        for i in range(len(self.songs)):
-            if self.songs[i].song is self.current:
-                idx = i
-                break
-        self.songs.pop(idx)
-        if idx >= len(self.songs):
-            idx = len(self.songs) - 1
-        self.current = self.songs[idx]
+        self.songs.pop(self.current_idx)
+        if self.current_idx >= len(self.songs):
+            self.current_idx = len(self.songs) - 1
         self.scroll_view.redraw_items()
         self.match_current()
         self.save_data()
@@ -242,13 +236,13 @@ class MyMainWindow(QWidget):
         return mixer.music.get_pos() + self.position_moved
 
     def on_show_name(self):
-        if self.name_window is not None:
+        if self.name_window is not None and not self.name_window.stopped:
             self.name_window.stopped = True
             if self.name_window.isVisible():
                 self.name_window.close()
-        else:
+        elif True:
             self.name_window = NameWindow(
-                self.name_window_closed, self.current, # self.current.formatted_name('::'),
+                self.name_window_closed, self.current_idx, # self.current.formatted_name('::'),
                 self.songs,
                 lambda: self.get_current_position() / 1000, lambda: self.current.duration
             )
@@ -286,7 +280,7 @@ class MyMainWindow(QWidget):
                 'repeat_mode': self.repeat_mode,
                 'play_mode': self.play_mode,
                 'sorting_mode': self.sorting_mode,
-                'current_item': ([i for i in range(len(self.songs)) if self.songs[i].song is self.current] or [0])[0],
+                'current_item': self.current_idx,
                 'current_pos': mixer.music.get_pos(),
                 'songs': [i.song.filename for i in self.songs],
             }))
@@ -305,12 +299,9 @@ class MyMainWindow(QWidget):
             time.sleep(0.05)
 
     def on_song_ended(self):
-        for i in self.songs:
-            if i.song is self.current:
-                self.btn_next_click()
-                if self.repeat_mode == 'one':
-                    self.btn_prev_click()
-                break
+        self.btn_next_click()
+        if self.repeat_mode == 'one':
+            self.btn_prev_click()
 
     def update_pos(self):
         self.slider_out.setValue(self.get_current_position())
@@ -318,33 +309,22 @@ class MyMainWindow(QWidget):
 
     @no_error
     def btn_next_click(self):
-        idx = -1
-
-        for i in range(len(self.songs)):
-            if self.songs[i].song is self.current:
-                idx = i
-                break
-
-        next_ = idx + 1
+        next_ = self.current_idx + 1
 
         if next_ >= len(self.songs):
             next_ -= len(self.songs)
-        self.current = self.songs[next_].song
+
+        self.current_idx = next_
         self.match_current()
         self.save_data()
 
     @no_error
     def btn_prev_click(self):
-        idx = -1
-        for i in range(len(self.songs)):
-            if self.songs[i].song is self.current:
-                idx = i
-                break
-
-        next_ = idx - 1
+        next_ = self.current_idx - 1
         if next_ < 0:
             next_ += len(self.songs)
-        self.current = self.songs[next_].song
+
+        self.current_idx = next_
         self.match_current()
         self.save_data()
 
@@ -399,33 +379,32 @@ class MyMainWindow(QWidget):
     @no_error
     def match_current(self):
         for i in self.songs:
-            if i.song is self.current:
-                i.setStyleSheet('background-color: yellow;')
-                self.lblSinger.setText(i.song.singer)
-                self.lblTitle.setText(i.song.name)
-                self.slider_in.setMaximum(round(i.song.duration * 1000))
-                self.slider_out.setMaximum(round(i.song.duration * 1000))
-                self.lblTimeEnd.setText(f'{int(i.song.duration // 60)}:{int(i.song.duration % 60)}')
-                self.slider_in.setMinimum(0)
-                self.slider_out.setMinimum(0)
+            i.setStyleSheet('')
 
-                mixer.music.load(i.song.filename)
+        self.songs[self.current_idx].setStyleSheet('background-color: yellow;')
+        self.lblSinger.setText(self.current.singer)
+        self.lblTitle.setText(self.current.name)
+        self.slider_in.setMaximum(round(self.current.duration * 1000))
+        self.slider_out.setMaximum(round(self.current.duration * 1000))
+        self.lblTimeEnd.setText(f'{int(self.current.duration // 60)}:{int(self.current.duration % 60)}')
+        self.slider_in.setMinimum(0)
+        self.slider_out.setMinimum(0)
 
-                mixer.music.play()
-                self.position_moved = 0
-                if self.play_mode == 'pause':
-                    mixer.music.pause()
+        mixer.music.load(self.current.filename)
 
-                if self.name_window is not None:
-                    if self.name_window.isVisible():
-                        try:
-                            self.name_window.close()
-                        except Exception as e:
-                            print(e)
-                    self.name_window = None
-                self.show_name.emit()
-            else:
-                i.setStyleSheet('')
+        mixer.music.play()
+        self.position_moved = 0
+        if self.play_mode == 'pause':
+            mixer.music.pause()
+
+        if self.name_window is not None:
+            if self.name_window.isVisible():
+                try:
+                    self.name_window.close()
+                except Exception as e:
+                    print(e)
+            self.name_window = None
+        self.show_name.emit()
 
     def closeEvent(self, event):
         self.stopped = True
@@ -436,8 +415,15 @@ class MyMainWindow(QWidget):
         event.accept()
 
     def song_clicked(self, song):
-        self.current = song
+        for i in range(len(self.song_list)):
+            if self.songs[i].song is song:
+                self.current_idx = i
+                break
         self.match_current()
+
+    @property
+    def current(self):
+        return self.songs[self.current_idx].song
 
     def slider_move(self, value):
         try:
