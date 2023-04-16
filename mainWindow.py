@@ -415,7 +415,7 @@ class MyMainWindow(QWidget):
         event.accept()
 
     def song_clicked(self, song):
-        for i in range(len(self.song_list)):
+        for i in range(len(self.songs)):
             if self.songs[i].song is song:
                 self.current_idx = i
                 break
