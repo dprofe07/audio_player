@@ -76,11 +76,19 @@ class MyMainWindow(QWidget):
         self.btn_sorting = QPushButton(QIcon('images/sorting_A2Z.png'), '')
         self.btn_sorting.clicked.connect(lambda e: self.current_playlist.change_sorting_mode())
 
+        self.slider_volume = QSlider(Qt.Vertical)
+        self.slider_volume.setMinimum(0)
+        self.slider_volume.setMaximum(100)
+        self.slider_volume.setValue(int(pygame.mixer.music.get_volume() * 100))
+        self.slider_volume.valueChanged.connect(self.slider_volume_changed)
+
         for i in [self.btn_repeater, self.btn_prev, self.btn_play_pause, self.btn_next, self.btn_sorting]:
             self.hboxControls.addWidget(i)
             i.setFixedHeight(75)
             i.setFixedWidth(75)
             i.setIconSize(QSize(60, 60))
+
+        self.hboxControls.addWidget(self.slider_volume)
 
         self.hboxControls.addStretch(1)
 
@@ -159,7 +167,8 @@ class MyMainWindow(QWidget):
                     json.dumps(
                         {
                             'playlists': ['default_playlist'],
-                            'current_playlist_idx': 0
+                            'current_playlist_idx': 0,
+                            'volume': 0.5
                         }
                     )
                 )
@@ -204,6 +213,8 @@ class MyMainWindow(QWidget):
 
         with open('data.mpldt') as f:
             data = json.loads(f.read())
+
+            self.slider_volume.setValue(int(data.get('volume', 0.5) * 100))
 
             playlist_names = data['playlists']
             self.playlists = []
@@ -297,7 +308,8 @@ class MyMainWindow(QWidget):
                 json.dumps(
                     {
                         'playlists': [i.filename for i in self.playlists],
-                        'current_playlist_idx': self.current_playlist_idx
+                        'current_playlist_idx': self.current_playlist_idx,
+                        'volume': pygame.mixer.music.get_volume(),
                     }
                 )
             )
@@ -413,3 +425,6 @@ class MyMainWindow(QWidget):
         playlist_name = playlist_name[0]
         self.cmbPlaylists.setItemText(self.current_playlist_idx, playlist_name)
         self.current_playlist.name = playlist_name
+
+    def slider_volume_changed(self):
+        pygame.mixer.music.set_volume(self.slider_volume.value() / 100)
