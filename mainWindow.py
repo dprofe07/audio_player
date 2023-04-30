@@ -57,6 +57,8 @@ class MyMainWindow(QWidget):
         self.hboxControls = QHBoxLayout()
         self.vbox.addLayout(self.hboxControls)
 
+        self.hboxControls.addStretch(1)
+
         # Controls:
 
         self.btn_repeater = QPushButton(QIcon('images/repeat_no.png'), '')
@@ -79,6 +81,8 @@ class MyMainWindow(QWidget):
             i.setFixedHeight(75)
             i.setFixedWidth(75)
             i.setIconSize(QSize(60, 60))
+
+        self.hboxControls.addStretch(1)
 
         self.slider_out = QSlider(Qt.Horizontal)
         self.vbox.addWidget(self.slider_out)
