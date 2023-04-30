@@ -29,9 +29,10 @@ class ScrollingFrame(QWidget):
     def redraw_items(self):
         for i in reversed(range(self.list_box.count())):
             a = self.list_box.itemAt(i).widget()
+
             if a:
                 a.setParent(None)
+                self.list_box.removeWidget(a)
         for i in self.items:
             self.list_box.addWidget(i)
             self.list_box.addStretch(1)
-
