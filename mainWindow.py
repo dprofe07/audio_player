@@ -80,6 +80,7 @@ class MyMainWindow(QWidget):
         self.slider_volume.setMinimum(0)
         self.slider_volume.setMaximum(100)
         self.slider_volume.setValue(int(pygame.mixer.music.get_volume() * 100))
+        self.slider_volume.setFixedHeight(60)
         self.slider_volume.valueChanged.connect(self.slider_volume_changed)
 
         for i in [self.btn_repeater, self.btn_prev, self.btn_play_pause, self.btn_next, self.btn_sorting]:
@@ -89,7 +90,6 @@ class MyMainWindow(QWidget):
             i.setIconSize(QSize(60, 60))
 
         self.hboxControls.addWidget(self.slider_volume)
-
         self.hboxControls.addStretch(1)
 
         self.slider_out = QSlider(Qt.Horizontal)

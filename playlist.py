@@ -2,6 +2,7 @@ import json
 import os
 import random
 
+import pygame
 from PyQt5.QtGui import QIcon, QPixmap
 from pygame import mixer
 from tinytag import tinytag
@@ -180,14 +181,17 @@ class Playlist:
         self.mw.scroll_view.redraw_items()
 
         self.match_current()
-        mixer.music.set_pos(self.position_moved // 1000)
+        try:
+            mixer.music.set_pos(self.position_moved // 1000)
+        except pygame.error:
+            print('Troubles')
 
         self.draw_buttons()
 
     def add_song(self):
         dial = self.mw.get_songs_list()
 
-        for filename in dial[0]:
+        for filename in dial:
             try:
                 tag = tinytag.TinyTag.get(filename)
             except FileNotFoundError:
