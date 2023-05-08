@@ -111,7 +111,7 @@ class Playlist:
         self.save_data()
 
     def prev_song(self):
-        next_ = self.current_idx + 1
+        next_ = self.current_idx - 1
 
         if next_ < 0:
             next_ += len(self.songs)

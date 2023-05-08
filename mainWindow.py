@@ -82,7 +82,7 @@ class MyMainWindow(QWidget):
         self.slider_volume.setValue(int(pygame.mixer.music.get_volume() * 100))
         self.slider_volume.setFixedHeight(60)
         self.slider_volume.valueChanged.connect(self.slider_volume_changed)
-
+    
         for i in [self.btn_repeater, self.btn_prev, self.btn_play_pause, self.btn_next, self.btn_sorting]:
             self.hboxControls.addWidget(i)
             i.setFixedHeight(75)
