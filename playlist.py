@@ -61,8 +61,10 @@ class Playlist:
 
     @no_error
     def match_current(self):
+        print('A')
         for i in self.songs:
             i.setStyleSheet('')
+        print('B')
         self.songs[self.current_idx].setStyleSheet('background-color: yellow;')
         self.mw.lblSinger.setText(self.current_song.singer)
         self.mw.lblTitle.setText(self.current_song.name)
@@ -71,22 +73,21 @@ class Playlist:
         self.mw.lblTimeEnd.setText(f'{int(self.current_song.duration // 60)}:{int(self.current_song.duration % 60)}')
         self.mw.slider_in.setMinimum(0)
         self.mw.slider_out.setMinimum(0)
+        print('C')
 
         mixer.music.load(self.current_song.filename)
+        print('D')
 
         mixer.music.play()
+        print('E')
 
         if self.play_mode == 'pause':
             mixer.music.pause()
+        print('F')
 
-        if self.mw.name_window is not None:
-            if self.mw.name_window.isVisible():
-                try:
-                    self.mw.name_window.close()
-                except Exception as e:
-                    print(e)
-            self.mw.name_window = None
         self.mw.show_name.emit()
+        print('G')
+
 
     def save_data(self):
         with open(f'{self.filename}.mplpl', 'w') as f:
@@ -106,6 +107,7 @@ class Playlist:
         if next_ >= len(self.songs):
             next_ -= len(self.songs)
 
+        self.position_moved = 0
         self.current_idx = next_
         self.match_current()
         self.save_data()
@@ -116,6 +118,7 @@ class Playlist:
         if next_ < 0:
             next_ += len(self.songs)
 
+        self.position_moved = 0
         self.current_idx = next_
         self.match_current()
         self.save_data()
